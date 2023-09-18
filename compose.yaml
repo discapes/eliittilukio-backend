@@ -1,0 +1,12 @@
+version: "3.8"
+services:
+  mariadb:
+    image: mariadb
+    environment:
+      MARIADB_USER: oe
+      MARIADB_PASSWORD: EhiekocoefohhiD2
+      MARIADB_RANDOM_ROOT_PASSWORD: yes
+      MARIADB_DATABASE: oe
+    ports:
+      - 3306:3306
+# mysql -h::1 -uoe -pEhiekocoefohhiD2 oe
