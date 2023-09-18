@@ -96,7 +96,7 @@ async fn send_mail() -> () {
 
 async fn list_users() -> Result<Json<Vec<serde_json::Value>>, AppError> {
     Ok(Json(
-        sqlx::query!("SELECT username,score FROM users")
+        sqlx::query!("SELECT username,score FROM users ORDER BY score DESC LIMIT 10")
             .fetch_all(db().await)
             .await?
             .iter()
