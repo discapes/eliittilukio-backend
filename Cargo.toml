@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-axum = "0.6.20"
+axum = { version = "0.6.20", features = ["headers"] }
 sqlx = { version = "0.7", features = ["runtime-tokio", "mysql", "chrono"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -17,4 +17,5 @@ anyhow = "1.0.75"
 dotenv = "0.15.0"
 lettre = { version = "0.10.4", features = ["rustls-tls", "smtp-transport", "builder"], default-features = false }
 chrono = "0.4.31"
-sha2 = "0.10.7"
+argon2 = "0.5.2"
+jsonwebtoken = "8.3.0"

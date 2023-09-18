@@ -1,12 +1,16 @@
-use serde::Serialize;
-use sha2::Digest;
+use std::time::SystemTime;
+
+use anyhow::{anyhow, Result};
+use axum::headers::Cookie;
+use serde::{Deserialize, Serialize};
+/*use sha2::Digest;
 
 pub fn hash_string<T: AsRef<[u8]>>(input: T) -> Vec<u8> {
     let mut hasher = sha2::Sha256::new();
     hasher.update(input);
     let hash = hasher.finalize().to_vec();
     hash
-}
+}*/
 
 #[derive(Serialize)]
 pub struct GenericResponse {
@@ -14,3 +18,39 @@ pub struct GenericResponse {
 }
 
 pub static ISO_FORMAT: &str = "%Y-%m-%dT%H:%M:%S";
+pub static JWT_TTL: u64 = 60 * 60 * 24 * 365;
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Claims {
+    pub sub: String,
+    pub email: String,
+    pub exp: u64,
+}
+
+pub fn claims_from_cookie(cookie: Cookie) -> Result<Claims> {
+    let jwt = cookie.get("jwt").ok_or(anyhow!("No JWT set"))?;
+    let claims = jsonwebtoken::decode::<Claims>(
+        &jwt,
+        &jsonwebtoken::DecodingKey::from_secret(std::env::var("JWT_KEY").unwrap().as_bytes()),
+        &jsonwebtoken::Validation::new(jsonwebtoken::Algorithm::default()),
+    )?
+    .claims;
+    Ok(claims)
+}
+
+pub fn encode_claims(sub: String, email: String, ttl: u64) -> String {
+    jsonwebtoken::encode(
+        &jsonwebtoken::Header::default(),
+        &Claims {
+            sub,
+            email,
+            exp: SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_secs()
+                + ttl,
+        },
+        &jsonwebtoken::EncodingKey::from_secret(std::env::var("JWT_KEY").unwrap().as_bytes()),
+    )
+    .unwrap()
+}

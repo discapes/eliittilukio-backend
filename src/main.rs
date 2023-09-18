@@ -20,6 +20,7 @@ async fn main() -> Result<(), anyhow::Error> {
 
     let app = Router::new()
         .route("/create_user", post(user_api::create_user))
+        .route("/login", post(user_api::login))
         .route("/update_score", post(user_api::update_score))
         .route("/list_users", get(user_api::list_users))
         .route("/me", get(user_api::me))

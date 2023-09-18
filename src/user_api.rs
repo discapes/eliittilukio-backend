@@ -1,27 +1,33 @@
 use crate::{
     app_error::AppError,
     database::db,
-    util::{hash_string, GenericResponse, ISO_FORMAT},
+    util::{claims_from_cookie, encode_claims, GenericResponse, ISO_FORMAT, JWT_TTL},
 };
-use axum::Json;
+use anyhow::anyhow;
+use axum::{
+    headers::Cookie,
+    http::{header, HeaderMap},
+    Json, TypedHeader,
+};
 use serde::Deserialize;
 use serde_json::json;
 
 #[derive(Deserialize)]
 pub struct UpdateScorePayload {
-    username: String,
-    password: String,
     newscore: u64,
 }
 
+// typedheader must be before body
 pub async fn update_score(
+    TypedHeader(cookie): TypedHeader<Cookie>,
     Json(payload): Json<UpdateScorePayload>,
 ) -> Result<Json<GenericResponse>, AppError> {
+    let claims = claims_from_cookie(cookie).map_err(AppError::Request)?;
+
     if sqlx::query!(
-        "UPDATE users SET score=? WHERE username=? AND hash=? AND score<=?",
+        "UPDATE users SET score=? WHERE username=? AND score<=?",
         payload.newscore,
-        payload.username,
-        hash_string(payload.password),
+        claims.sub,
         payload.newscore
     )
     .execute(db().await)
@@ -34,7 +40,7 @@ pub async fn update_score(
         }))
     } else {
         Err(AppError::Request(anyhow::anyhow!(
-            "Failed to update score: invalid credentials or not highscore"
+            "Failed to update score: is it really your highscore?"
         )))
     }
 }
@@ -48,19 +54,54 @@ pub struct CreateUserPayload {
 
 pub async fn create_user(
     Json(payload): Json<CreateUserPayload>,
-) -> Result<Json<GenericResponse>, AppError> {
+) -> Result<(HeaderMap, Json<GenericResponse>), AppError> {
+    use argon2::{
+        password_hash::{rand_core::OsRng, PasswordHasher, SaltString},
+        Argon2,
+    };
+    let salt = SaltString::generate(&mut OsRng);
+    let argon2 = Argon2::default();
+    let password_hash = argon2
+        .hash_password(payload.password.as_bytes(), &salt)
+        .map_err(|_| anyhow::anyhow!("Failed to create hash"))?
+        .to_string();
+
     sqlx::query!(
         "INSERT INTO users SET username=?, email=?, hash=?",
         payload.username,
         payload.email,
-        hash_string(payload.password)
+        password_hash,
     )
     .execute(db().await)
-    .await?;
+    .await
+    .map_err(|err| match err {
+        sqlx::Error::Database(db_err) => {
+            if db_err.is_unique_violation() {
+                AppError::Request(anyhow!("Failed to create user: {}", db_err.message()))
+            } else {
+                AppError::Internal(anyhow!(db_err))
+            }
+        }
+        _ => AppError::Internal(anyhow!(err)),
+    })?;
 
-    Ok(Json(GenericResponse {
-        message: "User created",
-    }))
+    let mut headers = HeaderMap::new();
+    headers.insert(
+        header::SET_COOKIE,
+        format!(
+            "jwt={}",
+            encode_claims(payload.username, payload.email, JWT_TTL)
+        )
+        .parse()
+        .unwrap(),
+    );
+
+    Ok((
+        headers,
+        Json(GenericResponse {
+            message: "Created user",
+        }),
+    ))
 }
 
 pub async fn list_users() -> Result<Json<Vec<serde_json::Value>>, AppError> {
@@ -78,20 +119,18 @@ pub async fn list_users() -> Result<Json<Vec<serde_json::Value>>, AppError> {
     Ok(Json(list))
 }
 
-#[derive(Deserialize)]
-pub struct MePayload {
-    username: String,
-    password: String,
-}
+pub async fn me(
+    TypedHeader(cookie): TypedHeader<Cookie>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    let claims = claims_from_cookie(cookie).map_err(AppError::Request)?;
 
-pub async fn me(Json(payload): Json<MePayload>) -> Result<Json<serde_json::Value>, AppError> {
-    let rec = sqlx::query!(
-        "SELECT * FROM users WHERE username=? AND hash=?",
-        payload.username,
-        hash_string(payload.password)
-    )
-    .fetch_one(db().await)
-    .await?;
+    let rec = sqlx::query!("SELECT * FROM users WHERE username=?", claims.sub)
+        .fetch_one(db().await)
+        .await
+        .map_err(|e| match e {
+            sqlx::Error::RowNotFound => AppError::Request(anyhow::anyhow!("Invalid credentials!")),
+            ot => ot.into(),
+        })?;
 
     Ok(Json(json!({
         "username": rec.username,
@@ -101,4 +140,51 @@ pub async fn me(Json(payload): Json<MePayload>) -> Result<Json<serde_json::Value
         "created": rec.created.format(ISO_FORMAT).to_string(),
         "modified": rec.modified.format(ISO_FORMAT).to_string()
     })))
+}
+
+#[derive(Deserialize)]
+pub struct LoginPayload {
+    username: String,
+    password: String,
+}
+
+pub async fn login(
+    Json(payload): Json<LoginPayload>,
+) -> Result<(HeaderMap, Json<GenericResponse>), AppError> {
+    use argon2::{
+        password_hash::{PasswordHash, PasswordVerifier},
+        Argon2,
+    };
+
+    let rec = sqlx::query!(
+        "SELECT hash,username,email FROM users WHERE username=?",
+        payload.username,
+    )
+    .fetch_one(db().await)
+    .await
+    .map_err(|e| match e {
+        sqlx::Error::RowNotFound => AppError::Request(anyhow::anyhow!("User doesn't exist!")),
+        ot => ot.into(),
+    })?;
+
+    let parsed_hash =
+        PasswordHash::new(&rec.hash).map_err(|_| anyhow::anyhow!("Failed to parse hash"))?;
+    Argon2::default()
+        .verify_password(payload.password.as_bytes(), &parsed_hash)
+        .map_err(|_| anyhow::anyhow!("Invalid password"))?;
+
+    let mut headers = HeaderMap::new();
+    headers.insert(
+        header::SET_COOKIE,
+        format!("jwt={}", encode_claims(rec.username, rec.email, JWT_TTL))
+            .parse()
+            .unwrap(),
+    );
+
+    Ok((
+        headers,
+        Json(GenericResponse {
+            message: "Logged in",
+        }),
+    ))
 }
