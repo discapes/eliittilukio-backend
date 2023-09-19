@@ -1,6 +1,7 @@
 use crate::{
     app_error::AppError,
     database::db,
+    mail::{get_default_message_builder, mailer},
     util::{
         claims_from_cookie, insert_jwt_into_headers, GenericResponse, DEFAULT_COOKIE_OPTS,
         ISO_FORMAT, JWT_TTL,
@@ -13,6 +14,7 @@ use axum::{
     Json, TypedHeader,
 };
 use bigdecimal::ToPrimitive;
+use lettre::Transport;
 use serde::Deserialize;
 use serde_json::json;
 
@@ -49,12 +51,51 @@ pub async fn update_score(
     }
 }
 
+#[derive(Deserialize)]
+pub struct SendFeedbackPayload {
+    text: String,
+}
+
+pub async fn send_feedback(
+    TypedHeader(cookie): TypedHeader<Cookie>,
+    Json(payload): Json<SendFeedbackPayload>,
+) -> Result<Json<GenericResponse>, AppError> {
+    let claims = claims_from_cookie(cookie).map_err(AppError::Request).ok();
+    let sender_name = claims.as_ref().map_or("anon", |c| &c.sub);
+    let sender_email = claims.as_ref().map_or("anon", |c| &c.email);
+
+    sqlx::query!(
+        "INSERT INTO feedback SET username=?, email=?, text=?",
+        sender_name,
+        sender_email,
+        payload.text
+    )
+    .execute(db().await)
+    .await?;
+
+    let email = get_default_message_builder()
+        .await
+        .clone()
+        .to(std::env::var("ADMIN_EMAIL").unwrap().parse().unwrap())
+        .subject("You got feedback")
+        .body(format!("{sender_name} <{sender_email}>: {}", payload.text))
+        .unwrap();
+    let smtp_response = mailer().await.send(&email);
+    if let Err(smtp_err) = smtp_response {
+        tracing::error!("Failed to send feedback email: {}", smtp_err);
+    }
+
+    Ok(Json(GenericResponse {
+        message: "Feedback sent",
+    }))
+}
+
 pub async fn average_score() -> Result<Json<serde_json::Value>, AppError> {
     let res = sqlx::query!("SELECT AVG(score) as average FROM users WHERE banned=0")
         .fetch_one(db().await)
         .await?
         .average
-        .ok_or(anyhow!("Failed to get average"))?
+        .unwrap_or(sqlx::types::BigDecimal::from(0))
         .to_u64();
 
     Ok(Json(json!({
