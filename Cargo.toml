@@ -19,3 +19,5 @@ lettre = { version = "0.10.4", features = ["rustls-tls", "smtp-transport", "buil
 chrono = "0.4.31"
 argon2 = "0.5.2"
 jsonwebtoken = "8.3.0"
+tower = "0.4.13"
+tower-http = { version = "0.4.4", features = ["trace", "cors"] }
