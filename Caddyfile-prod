@@ -1,4 +1,4 @@
-localhost
+eliittilukio.fi
 
 handle_path /api/* {
 	reverse_proxy backend:3000

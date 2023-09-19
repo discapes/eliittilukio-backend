@@ -23,5 +23,9 @@
   - if not logged in, `aws ecr get-login-password --region eu-north-1 | podman login --username AWS --password-stdin 861821644425.dkr.ecr.eu-north-1.amazonaws.com`
   - `podman tag eliittilukio-backend 861821644425.dkr.ecr.eu-north-1.amazonaws.com/eliittilukio-backend`
   - `podman push 861821644425.dkr.ecr.eu-north-1.amazonaws.com/eliittilukio-backend`
-- On the server, fill the .env file and login to ECR
-- Start the service with `docker compose pull && docker compose up -f compose-prod.yaml`
+- On the server:
+  - `sudo apt update && sudo apt install vim git docker tmux docker-compose awscli mariadb-client`
+  - fill the .env file and login to ECR
+  - Get updates: `docker-compose -f compose-prod.yaml pull`
+  - Using tmux: run with `tmux a`, new window,`C-b c`, detach `C-b d`, change window `C-b <0-9>`
+  - Start the servicess with `docker-compose -f compose-prod.yaml up --abort-on-container-exit`

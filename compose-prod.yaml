@@ -1,11 +1,11 @@
 version: "3.8"
 services:
   mariadb:
-    image: mariadb
+    image: docker.io/mariadb
     environment:
       MARIADB_USER: oe
       MARIADB_PASSWORD: ${DATABASE_PASSWD}
-      MARIADB_RANDOM_ROOT_PASSWORD: yes
+      MARIADB_RANDOM_ROOT_PASSWORD: 1
       MARIADB_DATABASE: oe
     volumes:
       - mariadb_data:/var/lib/mysql
@@ -15,12 +15,15 @@ services:
     image: 861821644425.dkr.ecr.eu-north-1.amazonaws.com/eliittilukio-backend
     env_file: .env
   frontend:
-    image: 861821644425.dkr.ecr.eu-north-1.amazonaws.com/eliittilukio-backend
+    image: 861821644425.dkr.ecr.eu-north-1.amazonaws.com/eliittilukio-frontend
     env_file: .env
   caddy:
-    image: caddy
+    image: docker.io/caddy
     ports:
       - 443:443
     volumes:
       - caddy_data:/data
       - ./Caddyfile-prod:/etc/caddy/Caddyfile
+volumes:
+  caddy_data:
+  mariadb_data:
