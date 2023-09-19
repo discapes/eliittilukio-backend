@@ -1,7 +1,10 @@
 use std::time::SystemTime;
 
 use anyhow::{anyhow, Result};
-use axum::headers::Cookie;
+use axum::{
+    headers::Cookie,
+    http::{header, HeaderMap},
+};
 use serde::{Deserialize, Serialize};
 /*use sha2::Digest;
 
@@ -19,6 +22,7 @@ pub struct GenericResponse {
 
 pub static ISO_FORMAT: &str = "%Y-%m-%dT%H:%M:%S";
 pub static JWT_TTL: u64 = 60 * 60 * 24 * 365;
+pub static DEFAULT_COOKIE_OPTS: &str = "HttpOnly; Secure; path=/; SameSite=Lax";
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
@@ -38,8 +42,13 @@ pub fn claims_from_cookie(cookie: Cookie) -> Result<Claims> {
     Ok(claims)
 }
 
-pub fn encode_claims(sub: String, email: String, ttl: u64) -> String {
-    jsonwebtoken::encode(
+pub fn insert_jwt_into_headers(
+    headers: &mut HeaderMap,
+    sub: String,
+    email: String,
+    ttl: u64,
+) -> () {
+    let jwt = jsonwebtoken::encode(
         &jsonwebtoken::Header::default(),
         &Claims {
             sub,
@@ -52,5 +61,12 @@ pub fn encode_claims(sub: String, email: String, ttl: u64) -> String {
         },
         &jsonwebtoken::EncodingKey::from_secret(std::env::var("JWT_KEY").unwrap().as_bytes()),
     )
-    .unwrap()
+    .unwrap();
+
+    headers.insert(
+        header::SET_COOKIE,
+        format!("jwt={jwt}; Max-Age={JWT_TTL}; {DEFAULT_COOKIE_OPTS}",)
+            .parse()
+            .unwrap(),
+    );
 }

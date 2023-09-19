@@ -1,7 +1,10 @@
 use crate::{
     app_error::AppError,
     database::db,
-    util::{claims_from_cookie, encode_claims, GenericResponse, ISO_FORMAT, JWT_TTL},
+    util::{
+        claims_from_cookie, insert_jwt_into_headers, GenericResponse, DEFAULT_COOKIE_OPTS,
+        ISO_FORMAT, JWT_TTL,
+    },
 };
 use anyhow::anyhow;
 use axum::{
@@ -86,15 +89,7 @@ pub async fn create_user(
     })?;
 
     let mut headers = HeaderMap::new();
-    headers.insert(
-        header::SET_COOKIE,
-        format!(
-            "jwt={}",
-            encode_claims(payload.username, payload.email, JWT_TTL)
-        )
-        .parse()
-        .unwrap(),
-    );
+    insert_jwt_into_headers(&mut &mut headers, payload.username, payload.email, JWT_TTL);
 
     Ok((
         headers,
@@ -142,6 +137,17 @@ pub async fn me(
     })))
 }
 
+pub async fn logout() -> HeaderMap {
+    let mut headers = HeaderMap::new();
+    headers.insert(
+        header::SET_COOKIE,
+        format!("jwt=; expires=Thu, 01 Jan 1970 00:00:00 UTC; {DEFAULT_COOKIE_OPTS}",)
+            .parse()
+            .unwrap(),
+    );
+    headers
+}
+
 #[derive(Deserialize)]
 pub struct LoginPayload {
     username: String,
@@ -171,15 +177,10 @@ pub async fn login(
         PasswordHash::new(&rec.hash).map_err(|_| anyhow::anyhow!("Failed to parse hash"))?;
     Argon2::default()
         .verify_password(payload.password.as_bytes(), &parsed_hash)
-        .map_err(|_| anyhow::anyhow!("Invalid password"))?;
+        .map_err(|_| AppError::Request(anyhow::anyhow!("Invalid password")))?;
 
     let mut headers = HeaderMap::new();
-    headers.insert(
-        header::SET_COOKIE,
-        format!("jwt={}", encode_claims(rec.username, rec.email, JWT_TTL))
-            .parse()
-            .unwrap(),
-    );
+    insert_jwt_into_headers(&mut &mut headers, rec.username, rec.email, JWT_TTL);
 
     Ok((
         headers,

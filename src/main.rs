@@ -1,12 +1,11 @@
 use axum::{
-    http::HeaderValue,
     routing::{get, post},
     Router,
 };
 use dotenv::dotenv;
 use lettre::{message::header::ContentType, Message, Transport};
 use tower::ServiceBuilder;
-use tower_http::{cors::CorsLayer, trace::TraceLayer};
+use tower_http::trace::TraceLayer;
 
 mod app_error;
 mod database;
@@ -29,11 +28,10 @@ async fn main() -> Result<(), anyhow::Error> {
         .route("/update_score", post(user_api::update_score))
         .route("/list_users", get(user_api::list_users))
         .route("/me", get(user_api::me))
+        .route("/logout", post(user_api::logout))
         .route("/send_mail", get(send_mail))
         .layer(
-            ServiceBuilder::new()
-                .layer(TraceLayer::new_for_http())
-                .layer(CorsLayer::new().allow_origin("*".parse::<HeaderValue>().unwrap())),
+            ServiceBuilder::new().layer(TraceLayer::new_for_http()), //  .layer(CorsLayer::new().allow_origin("localhost".parse::<HeaderValue>().unwrap())),
         );
 
     axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
