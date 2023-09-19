@@ -7,7 +7,5 @@ services:
       MARIADB_PASSWORD: ${DATABASE_PASSWD}
       MARIADB_RANDOM_ROOT_PASSWORD: yes
       MARIADB_DATABASE: oe
-    volumes:
-      - ./database.sql:/docker-entrypoint-initdb.d/database.sql
     ports:
       - 3306:3306
