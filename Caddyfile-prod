@@ -1,0 +1,6 @@
+localhost
+
+handle_path /api/* {
+	reverse_proxy backend:3000
+}
+reverse_proxy frontend:5173

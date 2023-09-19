@@ -4,9 +4,10 @@ services:
     image: mariadb
     environment:
       MARIADB_USER: oe
-      MARIADB_PASSWORD: EhiekocoefohhiD2
+      MARIADB_PASSWORD: ${DATABASE_PASSWD}
       MARIADB_RANDOM_ROOT_PASSWORD: yes
       MARIADB_DATABASE: oe
+    volumes:
+      - ./database.sql:/docker-entrypoint-initdb.d/database.sql
     ports:
       - 3306:3306
-# mysql -h::1 -uoe -pEhiekocoefohhiD2 oe

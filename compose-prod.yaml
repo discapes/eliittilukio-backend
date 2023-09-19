@@ -1,0 +1,26 @@
+version: "3.8"
+services:
+  mariadb:
+    image: mariadb
+    environment:
+      MARIADB_USER: oe
+      MARIADB_PASSWORD: ${DATABASE_PASSWD}
+      MARIADB_RANDOM_ROOT_PASSWORD: yes
+      MARIADB_DATABASE: oe
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    ports:
+      - 127.0.0.1:3306:3306
+  backend:
+    image: 861821644425.dkr.ecr.eu-north-1.amazonaws.com/eliittilukio-backend
+    env_file: .env
+  frontend:
+    image: 861821644425.dkr.ecr.eu-north-1.amazonaws.com/eliittilukio-backend
+    env_file: .env
+  caddy:
+    image: caddy
+    ports:
+      - 443:443
+    volumes:
+      - caddy_data:/data
+      - ./Caddyfile-prod:/etc/caddy/Caddyfile
