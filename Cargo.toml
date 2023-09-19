@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 axum = { version = "0.6.20", features = ["headers"] }
-sqlx = { version = "0.7", features = ["runtime-tokio", "mysql", "chrono"] }
+sqlx = { version = "0.7", features = ["runtime-tokio", "mysql", "chrono", "bigdecimal"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tokio = { version = "1.32", features = ["macros", "rt-multi-thread"] }
@@ -21,3 +21,4 @@ argon2 = "0.5.2"
 jsonwebtoken = "8.3.0"
 tower = "0.4.13"
 tower-http = { version = "0.4.4", features = ["trace", "cors"] }
+bigdecimal = "0.4.1"

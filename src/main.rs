@@ -27,6 +27,7 @@ async fn main() -> Result<(), anyhow::Error> {
         .route("/login", post(user_api::login))
         .route("/update_score", post(user_api::update_score))
         .route("/list_users", get(user_api::list_users))
+        .route("/average_score", get(user_api::average_score))
         .route("/me", get(user_api::me))
         .route("/logout", post(user_api::logout))
         .route("/send_mail", get(send_mail))

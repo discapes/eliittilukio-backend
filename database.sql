@@ -1,3 +1,13 @@
+-- oe.feedback definition
+
+CREATE TABLE `feedback` (
+  `username` varchar(255) NOT NULL,
+  `email` varchar(255) NOT NULL,
+  `text` text NOT NULL,
+  `created` datetime NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+
 -- oe.users definition
 
 CREATE TABLE `users` (

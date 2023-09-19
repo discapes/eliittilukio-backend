@@ -12,6 +12,7 @@ use axum::{
     http::{header, HeaderMap},
     Json, TypedHeader,
 };
+use bigdecimal::ToPrimitive;
 use serde::Deserialize;
 use serde_json::json;
 
@@ -46,6 +47,19 @@ pub async fn update_score(
             "Failed to update score: is it really your highscore?"
         )))
     }
+}
+
+pub async fn average_score() -> Result<Json<serde_json::Value>, AppError> {
+    let res = sqlx::query!("SELECT AVG(score) as average FROM users WHERE banned=0")
+        .fetch_one(db().await)
+        .await?
+        .average
+        .ok_or(anyhow!("Failed to get average"))?
+        .to_u64();
+
+    Ok(Json(json!({
+            "average": res
+    })))
 }
 
 #[derive(Deserialize)]
@@ -100,17 +114,19 @@ pub async fn create_user(
 }
 
 pub async fn list_users() -> Result<Json<Vec<serde_json::Value>>, AppError> {
-    let list = sqlx::query!("SELECT username,score FROM users ORDER BY score DESC LIMIT 10")
-        .fetch_all(db().await)
-        .await?
-        .iter()
-        .map(|rec| {
-            json!({
-                "username": rec.username,
-                "score": rec.score
-            })
+    let list = sqlx::query!(
+        "SELECT username,score FROM users WHERE banned=0 ORDER BY score DESC LIMIT 10"
+    )
+    .fetch_all(db().await)
+    .await?
+    .iter()
+    .map(|rec| {
+        json!({
+            "username": rec.username,
+            "score": rec.score
         })
-        .collect();
+    })
+    .collect();
     Ok(Json(list))
 }
 
