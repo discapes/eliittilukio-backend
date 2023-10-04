@@ -18,11 +18,16 @@
 
 ### Deployment
 
-- Build the container with `cargo sqlx prepare && podman build . -t eliittilukio-backend`
-- Push it to ECR
-  - if not logged in, `aws ecr get-login-password --region eu-north-1 | podman login --username AWS --password-stdin 861821644425.dkr.ecr.eu-north-1.amazonaws.com`
-  - `podman tag eliittilukio-backend 861821644425.dkr.ecr.eu-north-1.amazonaws.com/eliittilukio-backend`
-  - `podman push 861821644425.dkr.ecr.eu-north-1.amazonaws.com/eliittilukio-backend`
+- Prepare the sqlx queries: `cargo sqlx prepare`
+
+- Build and push backend:
+
+```bash
+DEST=861821644425.dkr.ecr.eu-north-1.amazonaws.com
+aws ecr get-login-password --region eu-north-1 | docker login --username AWS --password-stdin $DEST
+docker build . -t $DEST/eliittilukio-backend; docker push $DEST/eliittilukio-backend
+```
+
 - On the server:
   - `sudo apt update && sudo apt install vim git docker tmux docker-compose awscli mariadb-client`
   - fill the .env file and login to ECR
