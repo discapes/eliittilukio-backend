@@ -1,20 +1,11 @@
 version: "3.8"
 
 services:
-  mariadb:
-    image: docker.io/mariadb
-    environment:
-      MARIADB_USER: oe
-      MARIADB_PASSWORD: ${DATABASE_PASSWD}
-      MARIADB_RANDOM_ROOT_PASSWORD: 1
-      MARIADB_DATABASE: oe
-    volumes:
-      - /data/mysql:/var/lib/mysql
-    ports:
-      - 127.0.0.1:3306:3306
   backend:
     image: 861821644425.dkr.ecr.eu-north-1.amazonaws.com/eliittilukio-backend
     env_file: .env
+    volumes:
+      - /data/el-backend:/data
   frontend:
     image: 861821644425.dkr.ecr.eu-north-1.amazonaws.com/eliittilukio-frontend
     env_file: .env

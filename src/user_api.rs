@@ -20,7 +20,7 @@ use serde_json::json;
 
 #[derive(Deserialize)]
 pub struct UpdateScorePayload {
-    newscore: u64,
+    newscore: u32,
 }
 
 // typedheader must be before body
@@ -31,10 +31,9 @@ pub async fn update_score(
     let claims = claims_from_cookie(cookie).map_err(AppError::Request)?;
 
     if sqlx::query!(
-        "UPDATE users SET score=? WHERE username=? AND score<=?",
+        "UPDATE users SET score = ?1 WHERE username = ?2 AND score <= ?1",
         payload.newscore,
         claims.sub,
-        payload.newscore
     )
     .execute(db().await)
     .await?
@@ -65,7 +64,7 @@ pub async fn send_feedback(
     let sender_email = claims.as_ref().map_or("anon", |c| &c.email);
 
     sqlx::query!(
-        "INSERT INTO feedback SET username=?, email=?, text=?",
+        "INSERT INTO feedback (username, email, text) VALUES (?, ?, ?)",
         sender_name,
         sender_email,
         payload.text
@@ -95,7 +94,7 @@ pub async fn average_score() -> Result<Json<serde_json::Value>, AppError> {
         .fetch_one(db().await)
         .await?
         .average
-        .unwrap_or(sqlx::types::BigDecimal::from(0))
+        .unwrap_or(0)
         .to_u64();
 
     Ok(Json(json!({
@@ -114,10 +113,10 @@ pub async fn create_user(
     Json(payload): Json<CreateUserPayload>,
 ) -> Result<(HeaderMap, Json<GenericResponse>), AppError> {
     use argon2::{
-        password_hash::{rand_core::OsRng, PasswordHasher, SaltString},
+        password_hash::{ PasswordHasher, SaltString},
         Argon2,
     };
-    let salt = SaltString::generate(&mut OsRng);
+    let salt = SaltString::generate(&mut argon2::password_hash::rand_core::OsRng);
     let argon2 = Argon2::default();
     let password_hash = argon2
         .hash_password(payload.password.as_bytes(), &salt)
@@ -125,7 +124,7 @@ pub async fn create_user(
         .to_string();
 
     sqlx::query!(
-        "INSERT INTO users SET username=?, email=?, hash=?",
+        "INSERT INTO users (username, email, hash) VALUES (?, ?, ?)",
         payload.username,
         payload.email,
         password_hash,
@@ -156,7 +155,7 @@ pub async fn create_user(
 
 pub async fn list_users() -> Result<Json<Vec<serde_json::Value>>, AppError> {
     let list = sqlx::query!(
-        "SELECT username,score FROM users WHERE banned=0 ORDER BY score DESC LIMIT 10"
+        "SELECT username, score FROM users WHERE banned=0 ORDER BY score DESC LIMIT 10"
     )
     .fetch_all(db().await)
     .await?
@@ -176,7 +175,7 @@ pub async fn me(
 ) -> Result<Json<serde_json::Value>, AppError> {
     let claims = claims_from_cookie(cookie).map_err(AppError::Request)?;
 
-    let rec = sqlx::query!("SELECT * FROM users WHERE username=?", claims.sub)
+    let rec = sqlx::query!("SELECT * FROM users WHERE username = ?", claims.sub)
         .fetch_one(db().await)
         .await
         .map_err(|e| match e {
@@ -189,8 +188,8 @@ pub async fn me(
         "email": rec.email,
         "score": rec.score,
         "banned": rec.banned,
-        "created": rec.created.format(ISO_FORMAT).to_string(),
-        "modified": rec.modified.format(ISO_FORMAT).to_string()
+        "created": rec.created,
+        "modified": rec.modified
     })))
 }
 
@@ -220,7 +219,7 @@ pub async fn login(
     };
 
     let rec = sqlx::query!(
-        "SELECT hash,username,email FROM users WHERE username=?",
+        "SELECT hash, username, email FROM users WHERE username = ?",
         payload.username,
     )
     .fetch_one(db().await)

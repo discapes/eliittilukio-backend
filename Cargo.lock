@@ -408,6 +408,7 @@ dependencies = [
  "dotenv",
  "jsonwebtoken",
  "lettre",
+ "rand_core",
  "serde",
  "serde_json",
  "sqlx",
