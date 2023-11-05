@@ -12,6 +12,7 @@ CREATE TABLE users (
 	banned INT NOT NULL DEFAULT 0,
 	score INT NOT NULL DEFAULT 0,
 	hash TEXT NOT NULL,
+	approved INT NOT NULL DEFAULT 0,
 	PRIMARY KEY (email),
 	UNIQUE (username)
 );

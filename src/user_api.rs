@@ -14,13 +14,22 @@ use axum::{
     Json, TypedHeader,
 };
 use bigdecimal::ToPrimitive;
+use lazy_static::lazy_static;
 use lettre::Transport;
+use regex::Regex;
 use serde::Deserialize;
 use serde_json::json;
 
 #[derive(Deserialize)]
 pub struct UpdateScorePayload {
     newscore: u32,
+}
+
+fn validate_email(input: &str) -> bool {
+    lazy_static! {
+        static ref RE: Regex = Regex::new(r"^[a-z][a-z]\d\d\d\d@edu\.turku\.fi$").unwrap();
+    }
+    RE.is_match(input)
 }
 
 // typedheader must be before body
@@ -113,10 +122,14 @@ pub async fn create_user(
     Json(payload): Json<CreateUserPayload>,
 ) -> Result<(HeaderMap, Json<GenericResponse>), AppError> {
     use argon2::{
-        password_hash::{ PasswordHasher, SaltString},
+        password_hash::{rand_core::OsRng, PasswordHasher, SaltString},
         Argon2,
     };
-    let salt = SaltString::generate(&mut argon2::password_hash::rand_core::OsRng);
+    if !validate_email(&payload.email) {
+        return Err(AppError::Request(anyhow!("Error id 5 occured")));
+    }
+
+    let salt = SaltString::generate(&mut OsRng);
     let argon2 = Argon2::default();
     let password_hash = argon2
         .hash_password(payload.password.as_bytes(), &salt)
@@ -155,7 +168,7 @@ pub async fn create_user(
 
 pub async fn list_users() -> Result<Json<Vec<serde_json::Value>>, AppError> {
     let list = sqlx::query!(
-        "SELECT username, score FROM users WHERE banned=0 ORDER BY score DESC LIMIT 10"
+        "SELECT username, score FROM users WHERE banned = 0 AND approved = 1 ORDER BY score DESC LIMIT 10"
     )
     .fetch_all(db().await)
     .await?

@@ -5,6 +5,7 @@ use axum::{
 use dotenv::dotenv;
 use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
+use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 
 mod app_error;
 mod database;
@@ -16,8 +17,9 @@ mod util;
 async fn main() -> Result<(), anyhow::Error> {
     dotenv().ok();
 
-    tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::DEBUG)
+    tracing_subscriber::registry()
+        .with(fmt::layer())
+        .with(EnvFilter::from_default_env())
         .init();
     tracing::info!("Hello world!");
 

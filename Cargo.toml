@@ -12,7 +12,7 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tokio = { version = "1.32", features = ["macros", "rt-multi-thread"] }
 tracing = "0.1.37"
-tracing-subscriber = "0.3.17"
+tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
 anyhow = "1.0.75"
 dotenv = "0.15.0"
 lettre = { version = "0.10.4", features = ["rustls-tls", "smtp-transport", "builder"], default-features = false }
@@ -23,3 +23,5 @@ jsonwebtoken = "8.3.0"
 tower = "0.4.13"
 tower-http = { version = "0.4.4", features = ["trace", "cors"] }
 bigdecimal = "0.4.1"
+regex = "1.10.2"
+lazy_static = "1.4.0"
