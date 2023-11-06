@@ -1,6 +1,10 @@
-eliittilukio.fi
-
-handle_path /api/* {
-	reverse_proxy backend:3000
+eliittilukio.fi {
+	handle_path /api/* {
+		reverse_proxy backend:3000
+	}
+	reverse_proxy frontend:8888
 }
-reverse_proxy frontend:8888
+
+mc.eliittilukio.fi {
+	redir https://eliittilukio.fi/minecraft
+}
