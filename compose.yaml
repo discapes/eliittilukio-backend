@@ -6,13 +6,10 @@ services:
     env_file: .env
     volumes:
       - /data/el-backend:/data
+    ports:
+      - 127.0.0.1:8002:3000
   frontend:
     image: 861821644425.dkr.ecr.eu-north-1.amazonaws.com/eliittilukio-frontend
     env_file: .env
-  caddy:
-    image: docker.io/caddy:alpine
     ports:
-      - 443:443
-    volumes:
-      - /data/caddy:/data
-      - ./Caddyfile-prod:/etc/caddy/Caddyfile
+      - 127.0.0.1:8001:8888
