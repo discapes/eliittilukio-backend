@@ -168,7 +168,7 @@ pub async fn create_user(
 
 pub async fn list_users() -> Result<Json<Vec<serde_json::Value>>, AppError> {
     let list = sqlx::query!(
-        "SELECT username, score FROM users WHERE banned = 0 AND approved = 1 ORDER BY score DESC LIMIT 10"
+        "SELECT username, score FROM users WHERE banned = 0 ORDER BY score DESC LIMIT 10"
     )
     .fetch_all(db().await)
     .await?
